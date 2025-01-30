@@ -51,6 +51,7 @@ ENV DT_MODULE_TYPE="${REPO_NAME}" \
     DT_LAUNCHER="${LAUNCHER}"
 
 # install apt dependencies
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F42ED6FBAB17C654
 COPY ./dependencies-apt.txt "${REPO_PATH}/"
 RUN dt-apt-install ${REPO_PATH}/dependencies-apt.txt
 
