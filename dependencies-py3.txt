@@ -1,5 +1,5 @@
 # LIST YOUR PYTHON3 PACKAGES HERE
 # NOTE: only place non-Duckietown libraries here; pin versions only if necessary
-stable-baselines3
-gym
+stable-baselines3==1.3.0
+gym>=0.17.1
 shimmy>=0.2.1

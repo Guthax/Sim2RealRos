@@ -19,12 +19,12 @@ class WheelControlNode(DTROS):
         # static parameters
         vehicle_name = os.environ['VEHICLE_NAME']
         wheels_topic = f"/{vehicle_name}/wheels_driver_node/wheels_cmd"
-        wheel_radius_param = f"/{vehicle_name}/kinematics_node/radius"
+        #wheel_radius_param = f"/{vehicle_name}/kinematics_node/radius"
         # get duckiebot's wheel radius
-        wheel_radius = rospy.get_param(wheel_radius_param)
+        #wheel_radius = rospy.get_param(wheel_radius_param)
         # compute linear speeds
-        self._vel_left = W_LEFT * wheel_radius
-        self._vel_right = W_RIGHT * wheel_radius
+        self._vel_left = 0.2
+        self._vel_right = 0.2
         # construct publisher
         self._publisher = rospy.Publisher(wheels_topic, WheelsCmdStamped, queue_size=1)
 

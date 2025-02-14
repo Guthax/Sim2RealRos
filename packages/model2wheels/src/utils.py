@@ -3,7 +3,7 @@ import numpy as np
 
 unwrapped_wheel_dist = 0.102
 def convert_steering_to_wheel_vels(steering: float, gain=1.0, trim=0.0, radius=0.0318, k=27.0, limit=1.0):
-    vel, angle = 0.1, steering
+    vel, angle = 0.5, steering
     # Distance between the wheels
 
     baseline = unwrapped_wheel_dist
