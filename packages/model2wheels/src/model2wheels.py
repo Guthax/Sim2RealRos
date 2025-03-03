@@ -9,9 +9,11 @@ from stable_baselines3 import PPO
 from cv_bridge import CvBridge
 import cv2
 import torch
+import numpy as np
 import sched, time
 
-from utils import convert_steering_to_wheel_vels
+from utils import crop_rgb_obs, resize_rgb_obs, apply_lane_detection_filter, process_img, grad_cam
+from utils import steering_to_wheels_velocity_conversion, steering_to_wheel_velocities
 
 
 class Model2WheelsNode(DTROS):
@@ -30,7 +32,7 @@ class Model2WheelsNode(DTROS):
             "clip_range": lambda x: 0.2,  # Define a callable function
         }
 
-        self.model = PPO.load('packages/model2wheels/src/models/carla_only_rgb_steering_model_trained_200000_steps.zip',
+        self.model = PPO.load('packages/model2wheels/src/models/duckietown_time_rand_new_reward_LATEST_model_trained_200000_steps',
                          custom_objects=custom_objects)
         print("Model loaded")
         print(f"cuda: {torch.cuda.is_available()}")
@@ -42,45 +44,38 @@ class Model2WheelsNode(DTROS):
 
         # bridge between OpenCV and ROS
         self._bridge = CvBridge()
+
         # create window
         self._window = "camera-reader2"
+
         #cv2.namedWindow(self._window, cv2.WINDOW_AUTOSIZE)
         # construct subscriber
-        self.rate = rospy.Rate(1000)
-
-        self.camera_sub = rospy.Subscriber(self._camera_topic, CompressedImage, self.camera_callback)
+        #self.rate = rospy.Rate(8)
+        self.counter = 0
         self.wheel_pub = rospy.Publisher(self._wheels_topic, WheelsCmdStamped, queue_size=1)
-
-        self.ttl = 0
-        #self.my_scheduler = sched.scheduler(time.time, time.sleep)
-        #self.my_scheduler.enter(60, 1, self.update_ttl, (self.my_scheduler,))
-        #self.my_scheduler.run()
-
-
-        #self.publish_vels(0.2, 0.2)
+        self.camera_sub = rospy.Subscriber(self._camera_topic, CompressedImage, self.camera_callback)
 
 
     def camera_callback(self, msg):
         # convert JPEG bytes to CV image
-
-        image = self._bridge.compressed_imgmsg_to_cv2(msg)
-        image = cv2.resize(image, (160, 80))
-        #cv2.imshow(self._window, image)
+        print(f"Image: {self.counter} came in")
+        image_full = self._bridge.compressed_imgmsg_to_cv2(msg)
+        image_rgb, img_canny = process_img(image_full)
+        #grad = grad_cam(self.model, image_rgb)
+        #cv2.imshow(self._window, grad)
         #cv2.waitKey(1)
-
-        print(image.shape)
-        dict = {
-            "rgb_camera": image
-        }
-
         # display frame
         if self.model:
-            action, _states = self.model.predict(dict, deterministic=True)
-            left, right = convert_steering_to_wheel_vels(action[0])
+            #cv2.imshow("IMG_RGB", image_rgb)
+            #cv2.waitKey(1)
+            action, _states = self.model.predict(image_rgb, deterministic=True)
+            print(f"Action: {action}")
+            left, right = steering_to_wheel_velocities(action)
             print(f"Left: {left}, right: {right}")
             self.publish_vels(left,right)
-            self.rate.sleep()
-
+            print(f"Image: {self.counter} processed")
+            #self.rate.sleep()
+        self.counter += 1
 
 
 
@@ -90,18 +85,15 @@ class Model2WheelsNode(DTROS):
         self.wheel_pub.publish(message)
         #self.rate.sleep()
 
-    def update_ttl(self, scheduler):
-        # schedule the next call first
-        scheduler.enter(60, 1, self.update_ttl, (scheduler,))
-        self.ttl += 1
-        print("Setting TTL to: ", self.ttl)
-        # then do your stuff
-
     def on_shutdown(self):
         print("Shutdown")
-        print(f"TTL: {self.ttl}")
         stop = WheelsCmdStamped(vel_left=0, vel_right=0)
+        #self.rate.sleep()
         self.wheel_pub.publish(stop)
+        self.wheel_pub.publish(stop)
+        self.wheel_pub.publish(stop)
+
+
 
 if __name__ == '__main__':
     # create the node
@@ -109,3 +101,5 @@ if __name__ == '__main__':
     # run node
     # keep the process from terminating
     rospy.spin()
+
+
