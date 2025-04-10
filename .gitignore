@@ -8,3 +8,4 @@ requirements.resolved
 
 # otherwise CI thinks index not clean
 *.resolved
+*.zip
