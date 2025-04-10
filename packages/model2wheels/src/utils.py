@@ -11,8 +11,8 @@ def steering_to_wheels_velocity_conversion(steering):
     steering_angle = max(-1, min(1, steering))
 
     # Map the steering angle to wheel velocities
-    left_wheel_velocity = 0.25 * (2 + steering_angle)
-    right_wheel_velocity = 0.25 * (2 - steering_angle)
+    left_wheel_velocity = 0.25 * (1 + steering_angle)
+    right_wheel_velocity = 0.25 * (1 - steering_angle)
 
     return  1.2 * left_wheel_velocity, 1.2 * right_wheel_velocity
 
@@ -27,11 +27,13 @@ def steering_to_wheel_velocities(steering):
         tuple: (left_wheel_velocity, right_wheel_velocity)
     """
     # Ensure steering is within valid bounds
-    steering = max(-1, min(1, steering))
+    steering = max(-1, min(1, 2* steering))
 
     # Map steering to wheel velocities
-    left_wheel_velocity = (1 + steering) / 2
-    right_wheel_velocity = (1 - steering) / 2
+    #left_wheel_velocity = (1 + steering) / 2
+    #right_wheel_velocity = (1 - steering) / 2
+    left_wheel_velocity = 0.25 * (2 + steering)
+    right_wheel_velocity = 0.25 * (2 - steering)
 
     return left_wheel_velocity, right_wheel_velocity
 
@@ -39,9 +41,9 @@ def process_img(image_rgb_full):
     img_rgb_resized = resize_rgb_obs(image_rgb_full, 160, 120)
 
     img_rgb_cropped = crop_rgb_obs(img_rgb_resized, 40, 120)
-    image_canny_cropped = apply_lane_detection_filter(img_rgb_cropped)
+    #image_canny_cropped = apply_lane_detection_filter(img_rgb_cropped)
 
-    return img_rgb_cropped, image_canny_cropped
+    return img_rgb_cropped, None
 
 def resize_rgb_obs(obs, dst_w, dst_h):
     return cv2.resize(obs, (dst_w, dst_h))

@@ -11,15 +11,16 @@ import cv2
 import torch
 import numpy as np
 import sched, time
+from torchvision.transforms import transforms
 
 from utils import crop_rgb_obs, resize_rgb_obs, apply_lane_detection_filter, process_img, grad_cam
 from utils import steering_to_wheels_velocity_conversion, steering_to_wheel_velocities
-
-
+from utils_classes.dataloader import  DTSegmentationDataset
+from fast_scnn import FastSCNN
 class Model2WheelsNode(DTROS):
     def __init__(self, node_name):
         # initialize the DTROS parent class
-        super(Model2WheelsNode, self).__init__(node_name=node_name, node_type=NodeType.VISUALIZATION)
+        super(Model2WheelsNode, self).__init__(node_name=node_name, node_type=NodeType.GENERIC)
 
 
         self._vehicle_name = os.environ['VEHICLE_NAME']
@@ -32,11 +33,26 @@ class Model2WheelsNode(DTROS):
             "clip_range": lambda x: 0.2,  # Define a callable function
         }
 
-        self.model = PPO.load('packages/model2wheels/src/models/duckietown_time_rand_new_reward_LATEST_model_trained_200000_steps',
+        self.model = PPO.load('packages/model2wheels/src/models/carla_rgb_80_height_cropped_better_sp_continued_small_lr_model_trained_200000_steps',
                          custom_objects=custom_objects)
-        print("Model loaded")
+        print("Model loaded for control")
         print(f"cuda: {torch.cuda.is_available()}")
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        print(f"Device \: {self.device}")
+        """
+        num_classes = len(DTSegmentationDataset.SEGM_LABELS)
+        # Initialize model, loss function, and optimizer
+        self.model_segmentation = FastSCNN(num_classes=num_classes).cuda()
+        self.model_segmentation.load_state_dict(torch.load('packages/model2wheels/src/models/fast_scnn_epoch_50.pth'))
+        self.model_segmentation.eval()
 
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize((640, 480)),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+        print("Model loaded for segmentation inference")
+        """
 
 
         self._camera_topic = f"/{self._vehicle_name}/camera_node/image/compressed"
@@ -50,16 +66,18 @@ class Model2WheelsNode(DTROS):
 
         #cv2.namedWindow(self._window, cv2.WINDOW_AUTOSIZE)
         # construct subscriber
-        #self.rate = rospy.Rate(8)
+        self.rate = rospy.Rate(8)
         self.counter = 0
         self.wheel_pub = rospy.Publisher(self._wheels_topic, WheelsCmdStamped, queue_size=1)
         self.camera_sub = rospy.Subscriber(self._camera_topic, CompressedImage, self.camera_callback)
-
+        self.img_buff = None
 
     def camera_callback(self, msg):
         # convert JPEG bytes to CV image
         print(f"Image: {self.counter} came in")
         image_full = self._bridge.compressed_imgmsg_to_cv2(msg)
+        #self.img_buff = image_full
+        #self.rate.sleep()
         image_rgb, img_canny = process_img(image_full)
         #grad = grad_cam(self.model, image_rgb)
         #cv2.imshow(self._window, grad)
@@ -75,9 +93,21 @@ class Model2WheelsNode(DTROS):
             self.publish_vels(left,right)
             print(f"Image: {self.counter} processed")
             #self.rate.sleep()
+
         self.counter += 1
 
+    """
+    def do_segmentation(self):
+        image_full = self._get_observation_seg()
+        img = self.transform(image_full).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            output = self.model_segmentation(img)[0]
 
+        pred = torch.argmax(output, dim=1).cpu().squeeze().numpy()
+
+        cv2.imshow("pred", DTSegmentationDataset.label_img_to_rgb(pred))
+        cv2.waitKey(1)
+    """
 
     def publish_vels(self, vel_1: float, vel_2: float):
         print(f"Publishing vels: {vel_1}, {vel_2}")

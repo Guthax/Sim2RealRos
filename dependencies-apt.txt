@@ -1,2 +1,7 @@
 # LIST YOUR APT PACKAGES HERE
+# Non-Architecture Specific Packages Only
+# needed for OpenCV
+libgl1-mesa-glx
+
+# used by matplotlib
 python3-tk

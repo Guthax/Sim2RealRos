@@ -6,7 +6,6 @@
 !packages
 !dependencies-apt.txt
 !dependencies-py3.*
+!requirements*.txt
 !launchers
-
-# YOUR FILES LISTED BELOW THIS LINE (IMPORTANT: PREPEND !)
-# ----------------------------------------------------------------------------
+!whl_builder
