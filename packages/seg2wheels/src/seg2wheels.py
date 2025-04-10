@@ -17,10 +17,10 @@ from utils import crop_rgb_obs, resize_rgb_obs, apply_lane_detection_filter, pro
 from utils import steering_to_wheels_velocity_conversion, steering_to_wheel_velocities
 from utils_classes.dataloader import  DTSegmentationDataset
 from fast_scnn import FastSCNN
-class Seg2WheelsNode(DTROS):
+class Model2WheelsNode(DTROS):
     def __init__(self, node_name):
         # initialize the DTROS parent class
-        super(Seg2WheelsNode, self).__init__(node_name=node_name, node_type=NodeType.GENERIC)
+        super(Model2WheelsNode, self).__init__(node_name=node_name, node_type=NodeType.GENERIC)
 
 
         self._vehicle_name = os.environ['VEHICLE_NAME']
@@ -95,7 +95,7 @@ class Seg2WheelsNode(DTROS):
 
 if __name__ == '__main__':
     # create the node
-    node = Seg2WheelsNode(node_name='seg2wheels')
+    node = Model2WheelsNode(node_name='seg2wheels')
     # run node
     # keep the process from terminating
     rospy.spin()
