@@ -22,10 +22,10 @@ def compressed_image_callback(msg):
     global latest_compressed_image
     latest_compressed_image = msg  # Just store the latest message
 
-class RGB2WheelsNode(DTROS):
+class Gray2WheelsNode(DTROS):
     def __init__(self, node_name):
         # initialize the DTROS parent class
-        super(RGB2WheelsNode, self).__init__(node_name=node_name, node_type=NodeType.GENERIC)
+        super(Gray2WheelsNode, self).__init__(node_name=node_name, node_type=NodeType.GENERIC)
 
 
         self._vehicle_name = os.environ['VEHICLE_NAME']
@@ -125,7 +125,7 @@ class RGB2WheelsNode(DTROS):
 
 if __name__ == '__main__':
     # create the node
-    node = RGB2WheelsNode(node_name='seg2wheels')
+    node = Gray2WheelsNode(node_name='gray2wheels')
     # run node
     # keep the process from terminating
     rospy.spin()

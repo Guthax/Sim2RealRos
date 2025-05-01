@@ -8,7 +8,7 @@ scipy==1.10.1
 numpy==1.24.4
 Cython==3.0.10
 opencv-python
-
+pynput
 
 
 stable-baselines3==2.0.0

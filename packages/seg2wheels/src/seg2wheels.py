@@ -2,6 +2,7 @@
 
 import os
 import rospy
+import sys
 from duckietown.dtros import DTROS, NodeType
 from duckietown_msgs.msg import WheelsCmdStamped
 from sensor_msgs.msg import CompressedImage
@@ -12,15 +13,21 @@ import torch
 import numpy as np
 import sched, time
 from torchvision.transforms import transforms
+from std_msgs.msg import Int8MultiArray, MultiArrayDimension
 
-from utils import crop_rgb_obs, resize_rgb_obs, apply_lane_detection_filter, process_img, grad_cam
 from utils import steering_to_wheels_velocity_conversion, steering_to_wheel_velocities
-from utils_classes.dataloader import  DTSegmentationDataset
 from fast_scnn import FastSCNN
-class Model2WheelsNode(DTROS):
+np.set_printoptions(threshold=sys.maxsize)
+latest_processed_image = None
+def processed_image_callback(msg):
+    global latest_processed_image
+    latest_processed_image = msg  # Just store the latest message
+
+
+class Seg2WheelsNode(DTROS):
     def __init__(self, node_name):
-        # initialize the DTROS parent class
-        super(Model2WheelsNode, self).__init__(node_name=node_name, node_type=NodeType.GENERIC)
+        # initialize Seg2WheelsNode DTROS parent class
+        super(Seg2WheelsNode, self).__init__(node_name=node_name, node_type=NodeType.GENERIC)
 
 
         self._vehicle_name = os.environ['VEHICLE_NAME']
@@ -33,16 +40,15 @@ class Model2WheelsNode(DTROS):
             "clip_range": lambda x: 0.2,  # Define a callable function
         }
 
-        self.model = PPO.load('packages/seg2wheels/src/models/carla_rgb_80_height_cropped_better_sp_continued_small_lr_model_trained_200000_steps',
+        self.model = PPO.load('packages/seg2wheels/src/models/carla_seg_model_trained_800000_steps',
                          custom_objects=custom_objects)
         print("Model loaded for control")
         print(f"cuda: {torch.cuda.is_available()}")
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         print(f"Device \: {self.device}")
 
-
-
-        self._camera_topic = f"/{self._vehicle_name}/process_node/image/compressed"
+        self.last_action = 0.0
+        self._one_hot_topic = f"/{self._vehicle_name}/process_node/image/one_hot"
         self._wheels_topic = f"/{self._vehicle_name}/wheels_driver_node/wheels_cmd"
 
         # bridge between OpenCV and ROS
@@ -53,29 +59,34 @@ class Model2WheelsNode(DTROS):
         # construct subscriber
         self.counter = 0
         self.wheel_pub = rospy.Publisher(self._wheels_topic, WheelsCmdStamped, queue_size=1)
-        self.camera_sub = rospy.Subscriber(self._camera_topic, CompressedImage, self.camera_callback, queue_size=1)
+        self.camera_sub = rospy.Subscriber(self._one_hot_topic, Int8MultiArray, processed_image_callback, queue_size=1)
 
-    def camera_callback(self, msg):
+        while not rospy.is_shutdown():
+            if latest_processed_image is not None:
+                self.process(latest_processed_image)
+
+    def process(self, msg):
         # convert JPEG bytes to CV image
-        print(f"Image: {self.counter} came in")
-        image_full = self._bridge.compressed_imgmsg_to_cv2(msg)
-        cv2.imshow("img_seg", image_full)
-        cv2.waitKey(1)
-        """
+        print("Msg came in")
+        dims = msg.layout.dim
+        C, H, W = dims[0].size, dims[1].size, dims[2].size
+        one_hot = np.array(msg.data, dtype=np.int8).reshape((C, H, W))
+        #channel_max = one_hot.max(axis=(0, 1))
+        obs = {
+            "camera_seg": one_hot,
+            "vehicle_dynamics": [self.last_action],
+        }
         if self.model:
-            #cv2.imshow("IMG_RGB", image_rgb)
-            #cv2.waitKey(1)
-            action, _states = self.model.predict(image_full, deterministic=True)
+
+            action, _states = self.model.predict(obs, deterministic=True)
             print(f"Action: {action}")
             left, right = steering_to_wheel_velocities(action)
+            self.last_action = action[0]
             print(f"Left: {left}, right: {right}")
-            self.publish_vels(left,right)
+            self.publish_vels(left, right)
             print(f"Image: {self.counter} processed")
-            #self.rate.sleep()
-        """
 
         self.counter += 1
-
 
     def publish_vels(self, vel_1: float, vel_2: float):
         print(f"Publishing vels: {vel_1}, {vel_2}")
@@ -95,7 +106,7 @@ class Model2WheelsNode(DTROS):
 
 if __name__ == '__main__':
     # create the node
-    node = Model2WheelsNode(node_name='seg2wheels')
+    node = Seg2WheelsNode(node_name='seg2wheels')
     # run node
     # keep the process from terminating
     rospy.spin()
