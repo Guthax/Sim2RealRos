@@ -4,7 +4,7 @@ import rospy
 import time
 from duckietown.dtros import DTROS, NodeType
 from duckietown_msgs.msg import WheelsCmdStamped
-from std_msgs.msg import Int8MultiArray, MultiArrayDimension
+from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge
 import cv2
@@ -23,6 +23,9 @@ latest_compressed_image = None
 def image_callback(msg):
     global latest_compressed_image
     latest_compressed_image = msg
+
+
+
 
 class ImageProcessor(DTROS):
     def __init__(self, node_name):
@@ -54,7 +57,7 @@ class ImageProcessor(DTROS):
 
         self._bridge = CvBridge()
         #self.process_pub = rospy.Publisher(self._process_topic, CompressedImage, queue_size=1)
-        self.process_pub = rospy.Publisher(self._process_topic, Int8MultiArray, queue_size=1)
+        self.process_pub = rospy.Publisher(self._process_topic, Float32MultiArray, queue_size=1)
 
         # Set subscriber with queue_size=1 to avoid backlog
         self.camera_sub = rospy.Subscriber(
@@ -76,8 +79,6 @@ class ImageProcessor(DTROS):
 
         start_time = time.time()
         img = self.process_image(cv_image)
-        cv2.imshow("test", img)
-        cv2.waitKey(1)
         end_time = time.time()
         rospy.loginfo(f"Image processed in {end_time - start_time:.3f} seconds")
 
@@ -89,20 +90,16 @@ class ImageProcessor(DTROS):
             output = self.model_segmentation(img)[0]
 
         pred = torch.argmax(output, dim=1).cpu().squeeze().numpy()
-        one_hot = DTSegmentationDataset.label_img_to_one_hot(pred)
-        one_hot = self.resize_one_hot(one_hot)
+        pred = pred / 3
+        pred = cv2.resize(pred, (160, 120), interpolation=cv2.INTER_NEAREST)
+        #one_hot = DTSegmentationDataset.label_img_to_one_hot(pred)
+        #one_hot = self.resize_one_hot(one_hot)
 
-        # Optional: Display result
-        msg = Int8MultiArray()
+        msg = Float32MultiArray()
+        msg.layout.dim.append(MultiArrayDimension(label="height", size=pred.shape[0], stride=pred.size))
+        msg.layout.dim.append(MultiArrayDimension(label="width", size=pred.shape[1], stride=pred.shape[1]))
+        msg.data = pred.flatten().tolist()
 
-        # Define layout: [C, H, W]
-        msg.layout.dim.append(MultiArrayDimension(label="channels", size=one_hot.shape[0], stride=one_hot.size))
-        msg.layout.dim.append(
-            MultiArrayDimension(label="height", size=one_hot.shape[1], stride=one_hot.shape[1] * one_hot.shape[2]))
-        msg.layout.dim.append(MultiArrayDimension(label="width", size=one_hot.shape[2], stride=one_hot.shape[2]))
-
-        # Flatten data
-        msg.data = one_hot.flatten().tolist()
 
         # Publish the processed image
         #_, image_jpg = cv2.imencode('.jpg', pred_rgb)

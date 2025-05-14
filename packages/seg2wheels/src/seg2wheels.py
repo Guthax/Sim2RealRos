@@ -13,7 +13,7 @@ import torch
 import numpy as np
 import sched, time
 from torchvision.transforms import transforms
-from std_msgs.msg import Int8MultiArray, MultiArrayDimension
+from std_msgs.msg import Float32MultiArray, MultiArrayDimension
 
 from utils import steering_to_wheels_velocity_conversion, steering_to_wheel_velocities
 from fast_scnn import FastSCNN
@@ -40,7 +40,7 @@ class Seg2WheelsNode(DTROS):
             "clip_range": lambda x: 0.2,  # Define a callable function
         }
 
-        self.model = PPO.load('packages/seg2wheels/src/models/carla_seg_model_trained_800000_steps',
+        self.model = PPO.load('packages/seg2wheels/src/models/carla_seg_256_no_crop_model_trained_600000_steps',
                          custom_objects=custom_objects)
         print("Model loaded for control")
         print(f"cuda: {torch.cuda.is_available()}")
@@ -59,7 +59,7 @@ class Seg2WheelsNode(DTROS):
         # construct subscriber
         self.counter = 0
         self.wheel_pub = rospy.Publisher(self._wheels_topic, WheelsCmdStamped, queue_size=1)
-        self.camera_sub = rospy.Subscriber(self._one_hot_topic, Int8MultiArray, processed_image_callback, queue_size=1)
+        self.camera_sub = rospy.Subscriber(self._one_hot_topic, Float32MultiArray, processed_image_callback, queue_size=1)
 
         while not rospy.is_shutdown():
             if latest_processed_image is not None:
@@ -69,11 +69,11 @@ class Seg2WheelsNode(DTROS):
         # convert JPEG bytes to CV image
         print("Msg came in")
         dims = msg.layout.dim
-        C, H, W = dims[0].size, dims[1].size, dims[2].size
-        one_hot = np.array(msg.data, dtype=np.int8).reshape((C, H, W))
+        H, W = dims[0].size, dims[1].size
+        obs_img = np.expand_dims(np.array(msg.data, dtype=np.float32).reshape(H, W), axis=0)
         #channel_max = one_hot.max(axis=(0, 1))
         obs = {
-            "camera_seg": one_hot,
+            "camera_seg": obs_img,
             "vehicle_dynamics": [self.last_action],
         }
         if self.model:
