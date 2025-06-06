@@ -29,7 +29,7 @@ def steering_to_wheel_velocities(steering, base_speed=0.7):
 
     Returns:
         (left_wheel_velocity, right_wheel_velocity)
-    """
+
     steering = max(-1.0, min(1.0, 2*steering))
 
     if steering >= 0:
@@ -40,11 +40,21 @@ def steering_to_wheel_velocities(steering, base_speed=0.7):
         right = base_speed
 
     return left, right
+    """
+    # Ensure the steering angle is within the valid range
+    steering_angle = max(-1, min(1, 2*steering))
+    # steering_angle = self.convert_steering(action)
+
+    # Map the steering angle to wheel velocities
+    left_wheel_velocity = 0.25 * (2 + steering_angle)
+    right_wheel_velocity = 0.25 * (2 - steering_angle)
+
+    return left_wheel_velocity, right_wheel_velocity
 
 
 def process_img(image_rgb_full):
     img_processed = cv2.cvtColor(image_rgb_full, cv2.COLOR_BGR2RGB)
-    img_processed = resize_rgb_obs(img_processed, 160, 120)[40:][:][:]
+    img_processed = resize_rgb_obs(img_processed, 160, 120)#[40:][:][:]
     cv2.imshow("img_rgb", img_processed)
     cv2.waitKey(1)
     img_processed = np.transpose(img_processed, (2,0,1))

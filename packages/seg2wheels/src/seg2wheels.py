@@ -40,7 +40,7 @@ class Seg2WheelsNode(DTROS):
             "clip_range": lambda x: 0.2,  # Define a callable function
         }
 
-        self.model = PPO.load('packages/seg2wheels/src/models/carla_seg_256_no_crop_model_trained_600000_steps',
+        self.model = PPO.load('packages/seg2wheels/src/models/carla_seg_256_crop_model_trained_1000000',
                          custom_objects=custom_objects)
         print("Model loaded for control")
         print(f"cuda: {torch.cuda.is_available()}")
@@ -70,7 +70,7 @@ class Seg2WheelsNode(DTROS):
         print("Msg came in")
         dims = msg.layout.dim
         H, W = dims[0].size, dims[1].size
-        obs_img = np.expand_dims(np.array(msg.data, dtype=np.float32).reshape(H, W), axis=0)
+        obs_img = np.expand_dims(np.array(msg.data, dtype=np.float32).reshape(H, W)[40:], axis=0)
         #channel_max = one_hot.max(axis=(0, 1))
         obs = {
             "camera_seg": obs_img,
