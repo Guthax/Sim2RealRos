@@ -17,26 +17,30 @@ def steering_to_wheels_velocity_conversion(steering):
 
     return left_wheel_velocity, right_wheel_velocity
 
-def steering_to_wheel_velocities(steering):
+
+def steering_to_wheel_velocities(steering, base_speed=0.7):
     """
-    Convert a steering variable into differential drive wheel velocities.
+    Convert a steering value into differential drive velocities.
+    Allows tighter turns by reducing inner wheel speed more aggressively.
 
     Parameters:
-        steering (float): A value between -1 (full left) and 1 (full right).
+        steering (float): From -1 (full left) to +1 (full right)
+        base_speed (float): Maximum speed for the outer wheel (e.g., 0.7 m/s)
 
     Returns:
-        tuple: (left_wheel_velocity, right_wheel_velocity)
+        (left_wheel_velocity, right_wheel_velocity)
     """
-    # Ensure steering is within valid bounds
-    steering = max(-1, min(1, 2*steering))
+    steering = max(-1.0, min(1.0, 2*steering))
 
-    # Map steering to wheel velocities
-    #left_wheel_velocity = (1 + steering) / 2
-    #right_wheel_velocity = (1 - steering) / 2
-    left_wheel_velocity = 0.25 * (2 + steering)
-    right_wheel_velocity = 0.25 * (2 - steering)
+    if steering >= 0:
+        left = base_speed
+        right = base_speed * (1 - steering)
+    else:
+        left = base_speed * (1 + steering)
+        right = base_speed
 
-    return left_wheel_velocity, right_wheel_velocity
+    return left, right
+
 
 def process_img(image_rgb_full):
     img_processed = cv2.cvtColor(image_rgb_full, cv2.COLOR_BGR2RGB)

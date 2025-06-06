@@ -44,7 +44,7 @@ class Gray2WheelsNode(DTROS):
         self.wheel_pub = rospy.Publisher(self._wheels_topic, WheelsCmdStamped, queue_size=1)
         self.camera_sub = rospy.Subscriber(self._camera_topic, CompressedImage, compressed_image_callback, queue_size=1)
 
-        self.model = PPO.load('packages/gray2wheels/src/models/duckie_rgb_256_baseline_crop_model_trained_400000_steps',
+        self.model = PPO.load('packages/gray2wheels/src/models/carla_gray_256_dr_crop_model_trained_1000000_steps',
                          custom_objects=custom_objects)
         print("Model loaded for control")
         print(f"cuda: {torch.cuda.is_available()}")
