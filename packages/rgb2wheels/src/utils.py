@@ -54,7 +54,7 @@ def steering_to_wheel_velocities(steering, base_speed=0.7):
 
 def process_img(image_rgb_full):
     img_processed = cv2.cvtColor(image_rgb_full, cv2.COLOR_BGR2RGB)
-    img_processed = resize_rgb_obs(img_processed, 160, 120)#[40:][:][:]
+    img_processed = resize_rgb_obs(img_processed, 160, 120)[40:][:][:]
     cv2.imshow("img_rgb", img_processed)
     cv2.waitKey(1)
     img_processed = np.transpose(img_processed, (2,0,1))
